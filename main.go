@@ -1,19 +1,23 @@
-package main
+package handlers
 
 import (
-	"errors"
-	"fmt"
+	"net/http"
+
+	"github.com/gorilla/websocket"
 )
 
-func f(arg int) (int, error) {
-	if arg == 42 {
-		return -1, errors.New("cant work wih 42")
-	}
-	return arg + 3, nil
+var upgrader = websocket.Upgrader{
+	CheckOrigin: func(r *http.Request) bool { return true },
 }
 
-func main() {
-	fmt.Println("Hwllow world ")
-	//ERROR HANDLING IN GO
+func HandleConnections(hub *Hub, w http.ResponseWriter, r *http.Request) {
+	conn, err := upgrader.Upgrade(w, r, nil)
+	if err != nil {
+		return
+	}
+	client := &Client{hub: hub, conn: conn, send: make(chan []byte, 256)}
+	hub.register <- client
 
+	go client.writePump()
+	client.readPump()
 }
